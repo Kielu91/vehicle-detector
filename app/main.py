@@ -1,36 +1,35 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi.responses import StreamingResponse, HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 import io
 import os
 from detector import VehicleDetector
 
-app = FastAPI(title="Vehicle Detector - Real AI", version="1.0.0")
+# Aplikacja
+app = FastAPI()
 
-# Detektor z prawdziwym YOLO
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Detektor
 detector = None
 
 @app.on_event("startup")
 async def startup_event():
     global detector
     
-    # Sprawdź dostępne modele
-    model_options = [
-        'models/best.pt',
-        'yolov8n.pt'
-    ]
-    
-    model_path = None
-    for path in model_options:
-        if os.path.exists(path):
-            model_path = path
-            break
-    
-    if model_path is None:
+    # Znajdź model
+    if os.path.exists('models/best.pt'):
+        model_path = 'models/best.pt'
+    else:
         model_path = 'yolov8n.pt'
     
-    print(f" Loading YOLO model: {model_path}")
     detector = VehicleDetector(model_path)
-    print(" Real AI detector ready!")
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -38,114 +37,73 @@ async def home():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Vehicle Detector - Real AI</title>
+        <title>Vehicle Detector</title>
         <style>
             body { 
                 font-family: Arial; 
                 margin: 0; 
                 padding: 40px; 
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
+                background: #f5f5f5; 
+                display: flex;
+                justify-content: center;
             }
             .container { 
-                max-width: 700px; 
-                margin: 0 auto; 
-                background: rgba(255,255,255,0.1); 
+                max-width: 600px; 
+                background: white; 
                 padding: 40px; 
-                border-radius: 20px; 
-                backdrop-filter: blur(10px);
-                box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+                border-radius: 10px; 
+                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
                 text-align: center;
             }
             .upload-area { 
-                border: 3px dashed rgba(255,255,255,0.5); 
+                border: 3px dashed #007bff; 
                 padding: 40px; 
                 margin: 30px 0; 
-                border-radius: 15px; 
-                background: rgba(255,255,255,0.1);
-                transition: all 0.3s ease;
-            }
-            .upload-area:hover { 
-                border-color: #00f5ff; 
-                background: rgba(0,245,255,0.1);
-                transform: scale(1.02);
+                border-radius: 10px; 
+                background: #f8f9ff;
             }
             input[type="file"] {
                 margin: 20px 0;
                 padding: 10px;
-                background: rgba(255,255,255,0.2);
-                border: none;
-                border-radius: 8px;
-                color: white;
             }
             button { 
-                background: linear-gradient(45deg, #00f5ff, #0066ff);
+                background: #007bff;
                 color: white; 
-                padding: 15px 40px; 
+                padding: 15px 30px; 
                 border: none; 
-                border-radius: 25px; 
+                border-radius: 5px; 
                 cursor: pointer;
-                font-size: 18px;
-                font-weight: bold;
-                transition: all 0.3s ease;
-                box-shadow: 0 4px 15px rgba(0,245,255,0.3);
+                font-size: 16px;
             }
             button:hover { 
-                transform: translateY(-2px);
-                box-shadow: 0 8px 25px rgba(0,245,255,0.5);
+                background: #0056b3;
             }
             .result-image {
                 max-width: 100%;
                 margin-top: 30px;
-                border-radius: 15px;
-                box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+                border-radius: 5px;
             }
             .loading {
                 display: none;
                 margin-top: 20px;
-                font-size: 18px;
-                color: #00f5ff;
-            }
-            .ai-badge {
-                background: linear-gradient(45deg, #ff6b6b, #feca57);
-                color: white;
-                padding: 8px 16px;
-                border-radius: 20px;
-                font-size: 14px;
-                font-weight: bold;
-                display: inline-block;
-                margin: 10px 0;
-            }
-            .tech-stack {
-                font-size: 12px;
-                opacity: 0.8;
-                margin-top: 20px;
+                color: #007bff;
             }
         </style>
     </head>
     <body>
         <div class="container">
             <h1>🚗 Vehicle Detector</h1>
-            <div class="ai-badge"> Real AI - YOLOv8 + PyTorch</div>
-            <p>Upload obraz aby wykryć pojazdy przy użyciu prawdziwej sieci neuronowej!</p>
             
             <form id="uploadForm" enctype="multipart/form-data">
                 <div class="upload-area">
-                    <p style="font-size: 18px; margin-bottom: 15px;"> Wybierz obraz z pojazdami</p>
                     <input type="file" id="imageFile" name="file" accept="image/*" required>
-                    <br><button type="submit">🔍 Wykryj pojazdy (AI)</button>
+                    <br>
+                    <button type="submit">Wykryj pojazdy</button>
                 </div>
             </form>
             
-            <div class="loading" id="loading">
-                <p> AI analizuje obraz...</p>
-            </div>
-            
+            <div class="loading" id="loading">Analizuję obraz...</div>
             <div id="result"></div>
-            
-            <div class="tech-stack">
-                Tech Stack: PyTorch • YOLOv8 • FastAPI • Docker • Azure
-            </div>
         </div>
 
         <script>
@@ -163,6 +121,7 @@ async def home():
                 
                 const formData = new FormData();
                 formData.append('file', fileInput.files[0]);
+                formData.append('confidence', '0.5');
                 
                 try {
                     const response = await fetch('/detect_image', {
@@ -175,19 +134,13 @@ async def home():
                     if (response.ok) {
                         const blob = await response.blob();
                         const imageUrl = URL.createObjectURL(blob);
-                        result.innerHTML = `
-                            <h3>✅ AI Detection Complete:</h3>
-                            <img src="${imageUrl}" class="result-image">
-                            <p style="margin-top: 15px; font-size: 14px; opacity: 0.8;">
-                                Wykryte przez YOLOv8 - różne kolory dla różnych typów pojazdów
-                            </p>
-                        `;
+                        result.innerHTML = `<img src="${imageUrl}" class="result-image">`;
                     } else {
-                        result.innerHTML = '<p style="color: #ff6b6b;">❌ Błąd AI detection</p>';
+                        result.innerHTML = '<p style="color: red;">Błąd</p>';
                     }
                 } catch (error) {
                     loading.style.display = 'none';
-                    result.innerHTML = '<p style="color: #ff6b6b;">❌ Błąd połączenia</p>';
+                    result.innerHTML = '<p style="color: red;">Błąd połączenia</p>';
                 }
             });
         </script>
@@ -197,37 +150,17 @@ async def home():
 
 @app.post("/detect_image")
 async def detect_image(file: UploadFile = File(...)):
-    if detector is None:
-        raise HTTPException(status_code=500, detail="AI model not loaded")
-    
     if not file.content_type.startswith('image/'):
-        raise HTTPException(status_code=400, detail="Please upload an image file")
+        raise HTTPException(status_code=400, detail="Tylko obrazy")
     
-    try:
-        image_data = await file.read()
-        result_image = detector.detect_and_draw(image_data, confidence_threshold=0.5)
-        
-        if result_image is None:
-            raise HTTPException(status_code=500, detail="AI detection failed")
-        
-        return StreamingResponse(
-            io.BytesIO(result_image),
-            media_type="image/jpeg",
-            headers={"Content-Disposition": f"inline; filename=ai_detected_{file.filename}"}
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI detection error: {str(e)}")
-
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "ai_model": "YOLOv8" if detector else "not loaded",
-        "model_path": detector.model_path if detector else None
-    }
+    image_data = await file.read()
+    result_image = detector.detect_and_draw(image_data, confidence_threshold=0.5)
+    
+    if result_image is None:
+        raise HTTPException(status_code=500, detail="Błąd")
+    
+    return StreamingResponse(io.BytesIO(result_image), media_type="image/jpeg")
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚗 Starting Vehicle Detector with Real AI...")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
