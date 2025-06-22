@@ -8,7 +8,7 @@ import torch
 class VehicleDetector:
     """
     Klasa do wykrywania pojazdów przy użyciu modelu YOLO
-    """ 
+    """
     
     def __init__(self, model_path='models/best.pt'):
         """
