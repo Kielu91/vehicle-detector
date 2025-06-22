@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/5f2720e5-f635-474e-a6a4-c72bd2d3cf30/resourceGroups/detektor-rg/providers/Microsoft.Web/sites/detektorveh",
+    "appService.deploySubpath": "."
+}
