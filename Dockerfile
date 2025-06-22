@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR 
 
 # Zainstaluj Python packages
 COPY requirements.txt .
@@ -28,5 +28,5 @@ RUN python fix_model.py
 
 EXPOSE 8000
 
-WORKDIR /app/app
+WORKDIR /app
 CMD ["python", "main.py"]
