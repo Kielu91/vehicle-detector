@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR 
+WORKDIR /workspace
 
 # Zainstaluj Python packages
 COPY requirements.txt .
